@@ -13,3 +13,9 @@ hostAliases:
   - ip: 10.0.2.15
     hostnames:
       - gitlab.concombre.toboggan
+registries:
+  config: |
+    mirrors:
+      "docker.io":
+        endpoint:
+          - https://nexus.42lyon.fr:5000

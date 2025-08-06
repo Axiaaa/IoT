@@ -7,8 +7,7 @@ port-forward :
 		kubectl port-forward deployment/wil-playground -n dev 8888:8888 >/dev/null 2>&1 &
 
 clean : 
-	k3d cluster delete gitlab
-	k3d cluster delete argocd-cluster
+	k3d cluster delete --all
 	docker system prune -f --volumes
 	rm -rf .git token IoT-p3-lcamerly deployement.yaml service.yaml ingress.yaml
 

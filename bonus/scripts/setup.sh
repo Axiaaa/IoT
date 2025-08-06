@@ -233,6 +233,8 @@ install_argocd() {
     log_info "Applying ingress"
     kubectl apply -f confs/argo-ingress.yaml -n argocd
 
+    sleep 30
+
     argocd login --insecure --username admin --password "$PASSWORD" argocd.awesome.local --plaintext --grpc-web --skip-test-tls
 
     log_info "Creating ArgoCD application to deploy project in 'dev' namespace..."
@@ -270,15 +272,15 @@ display_access_info() {
     local gitlab_password
     gitlab_password=$(kubectl get secret gitlab-gitlab-initial-root-password -n gitlab -o jsonpath='{.data.password}' | base64 --decode)
     
-    echo -e "${GREEN}${CHECKMARK}${NC} ${WHITE}ArgoCD is available at:${NC} ${CYAN}http://127.0.0.1:8080${NC}"
+    echo -e "${GREEN}${CHECKMARK}${NC} ${WHITE}ArgoCD is available at:${NC} ${CYAN}http://argocd.awesome.local${NC}"
     echo -e "   ${CYAN}Username:${NC} ${WHITE}admin${NC}"
     echo -e "   ${CYAN}Password:${NC} ${WHITE}$argocd_password${NC}"
     echo ""
-    echo -e "${GREEN}${CHECKMARK}${NC} ${WHITE}GitLab is available at:${NC} ${CYAN}http://gitlab.${DOMAIN_NAME}${NC}"
+    echo -e "${GREEN}${CHECKMARK}${NC} ${WHITE}GitLab is available at:${NC} ${CYAN}http://gitlab.concombre.toboggan${DOMAIN_NAME}${NC}"
     echo -e "   ${CYAN}Username:${NC} ${WHITE}root${NC}"
     echo -e "   ${CYAN}Password:${NC} ${WHITE}$gitlab_password${NC}"
     echo ""
-    echo -e "${GREEN}${CHECKMARK}${NC} ${WHITE}Application is available at:${NC} ${CYAN}http://127.0.0.1:8888${NC}"
+    echo -e "${GREEN}${CHECKMARK}${NC} ${WHITE}Application is available at:${NC} ${CYAN}http://playround.local${NC}"
     echo ""
     echo -e "${PURPLE}═══════════════════════════════════════════════════════════${NC}"
 }
