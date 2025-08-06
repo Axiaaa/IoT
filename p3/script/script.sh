@@ -120,7 +120,7 @@ main() {
     print_step "9" "Deploying application via ArgoCD"
     log_info "Creating ArgoCD application 'will42'..."
     argocd app create will42 \
-	--repo https://github.com/Axiaaa/test-iot \
+	--repo https://github.com/Axiaaa/IoT-p3-lcamerly\
         --path . \
         --dest-server https://kubernetes.default.svc \
         --dest-namespace dev \
