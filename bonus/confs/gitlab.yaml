@@ -4,6 +4,7 @@ global:
   hosts:
     https: false        # Disable HTTPS globally
   ingress:
+    enabled: false
     configureCertmanager: false 
 
   kas:
@@ -21,7 +22,7 @@ global:
       enabled: false
 
 nginx-ingress:
-  enabled: true           
+  enabled: false           
 
 certmanager:
   install: false
@@ -33,8 +34,11 @@ gitlab:
   webservice:
     replicaCount: 1
     ingress:
+      enabled: false
       tls:
         enabled: false 
+    service:
+      type: ClusterIP
   sidekiq:
     ingress:
       tls:

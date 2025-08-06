@@ -1,4 +1,9 @@
-all : 
+ARGO_HOST = argocd.awesome.local
+APP_HOST = playground.local
+TEMPLATE_DIR = template
+OUTPUT_DIR = conf
+
+all :
 	./script/script.sh
 
 clean : 
@@ -7,4 +12,4 @@ clean :
 re : clean all
 
 clone : 
-	https://github.com/Axiaaa/IoT-p3-lcamerly
+	git clone	https://github.com/Axiaaa/IoT-p3-lcamerly

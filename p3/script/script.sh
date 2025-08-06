@@ -18,6 +18,7 @@ readonly STAR="★"
 readonly GEAR="⚙"
 
 readonly ARGO_HOST="argocd.awesome.local"
+readonly APP_HOST="playground.local"
 
 # Logging functions
 log_info() {
@@ -50,6 +51,17 @@ print_step() {
 # Main script execution
 main() {
     print_header "ArgoCD Cluster Setup & Deployment"
+
+
+    print_step "0: Setup /etc/hosts/"
+    if ! grep -Eq "^127\.0\.0\.1[[:space:]]+${ARGO_HOST}" /etc/hosts; then
+        echo -e "127.0.0.1       ${ARGO_HOST}" | sudo tee -a /etc/hosts
+    fi
+
+    if ! grep -Eq "^127\.0\.0\.1[[:space:]]+${APP_HOST}" /etc/hosts; then
+        echo -e "127.0.0.1       ${APP_HOST}" | sudo tee -a /etc/hosts
+    fi
+
     
     # Step 1: Create k3d cluster
     print_step "1" "Creating k3d cluster with 2 agents"
@@ -84,15 +96,11 @@ main() {
         sleep 2
     done
     echo -e "\n${GREEN}${CHECKMARK}${NC} ${WHITE}All ArgoCD pods are ready!${NC}"
-    
-    
 
     # Step 7: Wait for ArgoCD pods
     print_step "7" "login in argocd"
-    log_info "Retrieving admin password..."
 	kubectl get pods -n argocd
-    kubectl wait -n argocd --for=condition=Ready pods --all --timeout="60s"
-	kubectl get pods -n argocd
+    kubectl wait -n argocd --for=condition=Ready pods --all --timeout="30s"
     log_info "Retrieving admin password..."
     PASSWORD=$(kubectl get secret argocd-initial-admin-secret -n argocd -o jsonpath="{.data.password}" | base64 -d)
 
@@ -104,16 +112,16 @@ main() {
     argocd login --insecure --username admin --password "$PASSWORD" argocd.awesome.local:80 --plaintext --grpc-web
 
     # Step 6: Create development namespace
-    print_step "6" "Setting up development environment"
+    print_step "8" "Setting up development environment"
     log_info "Creating dev namespace..."
     kubectl create namespace dev >/dev/null 2>&1 || log_warning "Namespace 'dev' already exists"
     
     # Step 7: Create and sync ArgoCD application
-    print_step "7" "Deploying application via ArgoCD"
+    print_step "9" "Deploying application via ArgoCD"
     log_info "Creating ArgoCD application 'will42'..."
     argocd app create will42 \
-	--repo https://github.com/Axiaaa/IoT \
-        --path  p2/confs \
+	--repo https://github.com/Axiaaa/test-iot \
+        --path . \
         --dest-server https://kubernetes.default.svc \
         --dest-namespace dev \
         --sync-policy automated
@@ -123,7 +131,7 @@ main() {
     log_success "Application created and synced"
     
     # Step 8: Wait for application deployment
-    print_step "8" "Waiting for application pods to be ready"
+    print_step "10" "Waiting for application pods to be ready"
     echo -ne "${BLUE}${GEAR}${NC} ${WHITE}Checking application status"
     
     while kubectl get pods -n dev | grep playground | grep -v Running >/dev/null 2>&1; do
@@ -134,25 +142,19 @@ main() {
     echo -e "\n${GREEN}${CHECKMARK}${NC} ${WHITE}Application is running!${NC}"
     
     # Step 9: Setup application port forwarding
-    print_step "9" "Starting application port forwarding"
-    log_info "Forwarding application traffic..."
-    kubectl port-forward deployment/wil-playground -n dev 8888:8888 >/dev/null 2>&1 &
+    print_step "11" "Setting /etc/hosts"
     kubectl get svc
-    log_success "Port forwarding active"
-    
+
     # Final success message
     print_header "Deployment Complete!"
     
     echo -e "${GREEN}${CHECKMARK}${NC} ${WHITE}ArgoCD is available at:${NC} ${CYAN}http://${ARGO_HOST}${NC}"
-    echo -e "${GREEN}${CHECKMARK}${NC} ${WHITE}Application is available at:${NC} ${CYAN}http://localhost:8888${NC}"
+    echo -e "${GREEN}${CHECKMARK}${NC} ${WHITE}Application is available at:${NC} ${CYAN}http://playground.local${NC}"
     echo ""
     echo -e "${YELLOW}${STAR}${NC} ${WHITE}ArgoCD Login Credentials:${NC}"
     echo -e "   ${CYAN}Username:${NC} ${WHITE}admin${NC}"
     echo -e "   ${CYAN}Password:${NC} ${WHITE}$PASSWORD${NC}"
     echo ""
-    echo -e "${YELLOW}${STAR}${NC} ${WHITE}Current version of the app${NC}"
-    sleep 2
-    echo -e "${CYAN}$(curl -s http://localhost:8888 | jq '.message')${NC}"
 }
 
 # Execute main function
