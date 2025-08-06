@@ -73,6 +73,7 @@ main() {
     print_step "2" "Setting up ArgoCD namespace"
     log_info "Creating argocd namespace..."
     kubectl create namespace argocd >/dev/null 2>&1 || log_warning "Namespace 'argocd' already exists"
+    kubectl create namespace dev >/dev/null 2>&1 || log_warning "Namespace 'dev' already exists"
     
     # Step 3: Install ArgoCD
     print_step "3" "Installing ArgoCD components"
@@ -82,8 +83,9 @@ main() {
     
 
     # Step 4: reapply the fucking insecure server configuration
-    print_step "4" "Applying insecure configuration"
+    print_step "4" "Applying confing & ingress"
     kubectl apply -n argocd -f conf/configmap.yaml
+   
     
     print_step "5" "Restarting deployment"
     kubectl rollout restart deployment argocd-server -n argocd
@@ -104,28 +106,39 @@ main() {
     log_info "Retrieving admin password..."
     PASSWORD=$(kubectl get secret argocd-initial-admin-secret -n argocd -o jsonpath="{.data.password}" | base64 -d)
 
-    kubectl apply -f conf/ingress.yaml
+    kubectl apply -n argocd -f conf/ingress.yaml
 
-    kubectl wait --for=condition=ready ingress/iot-ingress --namespace argocd
-    
+
     log_info "Logging into ArgoCD..."
-    argocd login --insecure --username admin --password "$PASSWORD" argocd.awesome.local:80 --plaintext --grpc-web
+    until argocd login --insecure --username admin --password "$PASSWORD" argocd.awesome.local --plaintext --grpc-web --skip-test-tls;
+    do
+        echo "Login failed. Trying again..."
+        sleep 2
+    done
 
-    # Step 6: Create development namespace
-    print_step "8" "Setting up development environment"
-    log_info "Creating dev namespace..."
-    kubectl create namespace dev >/dev/null 2>&1 || log_warning "Namespace 'dev' already exists"
-    
-    # Step 7: Create and sync ArgoCD application
-    print_step "9" "Deploying application via ArgoCD"
-    log_info "Creating ArgoCD application 'will42'..."
-    argocd app create will42 \
-	--repo https://github.com/Axiaaa/IoT-p3-lcamerly\
-        --path . \
-        --dest-server https://kubernetes.default.svc \
-        --dest-namespace dev \
-        --sync-policy automated
-    
+    log_info "Waiting for ArgoCD server to be ready..."
+    until argocd version --server argocd.awesome.local --insecure --plaintext --grpc-web > /dev/null 2>&1
+    do
+        echo "ArgoCD server not ready yet. Waiting..."
+        sleep 3
+    done
+
+    log_info "Creating ArgoCD application to deploy project in 'dev' namespace..."
+    if argocd app get will42 > /dev/null 2>&1; then
+        echo "Application 'will42' already exists. Syncing..."
+        argocd app sync will42
+    else
+        until argocd app create will42 \
+            --repo https://github.com/Axiaaa/IoT-p3-lcamerly \
+            --path . \
+            --dest-server https://kubernetes.default.svc \
+            --dest-namespace dev \
+            --sync-policy automated
+        do
+            echo "App creation failed. Retrying in 5 seconds..."
+            sleep 5
+        done
+    fi
     log_info "Syncing application..."
     argocd app sync will42
     log_success "Application created and synced"

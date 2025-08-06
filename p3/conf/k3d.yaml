@@ -6,3 +6,9 @@ ports:
   - port: 80:80
     nodeFilters:
       - loadbalancer
+registries:
+  config: |
+    mirrors:
+      "docker.io":
+        endpoint:
+          - https://nexus.42lyon.fr:5000
