@@ -21,3 +21,10 @@ kubectl apply -f /vagrant/confs/httpd.yaml
 kubectl apply -f /vagrant/confs/helloworld.yaml
 kubectl apply -f /vagrant/confs/ingress.yaml
 
+echo "Waiting for the app to be available"
+until curl -s 192.168.56.110 >/dev/null 2>&1;
+do 
+    sleep 2
+done
+
+echo "The app is ready! Use makefile (make app1, app2, app3 and default) outstide of the Vagrant VM to test it!"

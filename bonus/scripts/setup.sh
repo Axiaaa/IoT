@@ -89,7 +89,7 @@ wait_for_url() {
             echo -e "\n${RED}${CROSS}${NC} ${WHITE}Error while pulling image${NC}"
         fi
     done
-    echo -e "\n${GREEN}${CHECKMARK}${NC} ${WHITE}$url is now accessible${NC}"
+    echo -e "\n${GREEN}${CHECKMARK}${NC} ${WHITE}http://$url is now accessible${NC}"
 }
 
 wait_for_pods() {
@@ -177,7 +177,7 @@ setup_gitlab_project() {
     log_success "GitLab token generated"
     
 
-    export REPO_URL="http://root:${token}@${GITLAB_HOST}/root/${PROJECT_NAME}.git"
+    export REPO_URL=export REPO_URL="http://root:${token}@gitlab-webservice-default.gitlab.svc.cluster.local:8181/root/${PROJECT_NAME}.git"
 
     echo -e $REPO_URL
 
@@ -206,7 +206,6 @@ setup_gitlab_project() {
 
 
 install_argocd() {
-    print_step "5" "Installing ArgoCD and configuring application deployment"
 
     log_info "Creating 'argocd' namespace..."
     kubectl create namespace argocd || log_warning "'argocd' namespace already exists"
@@ -215,7 +214,6 @@ install_argocd() {
 
     kubectl apply -n argocd -f https://raw.githubusercontent.com/argoproj/argo-cd/stable/manifests/install.yaml
 
-    wait_for_pods "argocd" 120
 
     kubectl apply -n argocd -f confs/configmap.yaml
 
@@ -235,17 +233,38 @@ install_argocd() {
 
     sleep 30
 
-    argocd login --insecure --username admin --password "$PASSWORD" argocd.awesome.local --plaintext --grpc-web --skip-test-tls
+    log_info "Logging into ArgoCD..."
+    until argocd login --insecure --username admin --password "$PASSWORD" argocd.awesome.local --plaintext --grpc-web --skip-test-tls;
+    do
+        echo "Login failed. Trying again..."
+        sleep 2
+    done
+
+    log_info "Waiting for ArgoCD server to be ready..."
+    until argocd version --server argocd.awesome.local --insecure --plaintext --grpc-web > /dev/null 2>&1
+    do
+        echo "ArgoCD server not ready yet. Waiting..."
+        sleep 3
+    done
 
     log_info "Creating ArgoCD application to deploy project in 'dev' namespace..."
+    if argocd app get will42 > /dev/null 2>&1; then
+        echo "Application 'will42' already exists. Syncing..."
+        argocd app sync will42
+    else
+        until argocd app create will42 \
+            --repo $REPO_URL \
+            --path . \
+            --dest-server https://kubernetes.default.svc \
+            --dest-namespace dev \
+            --sync-policy automated
+        do
+            echo "App creation failed. Retrying in 5 seconds..."
+            sleep 5
+        done
+    fi
 
-    argocd app create will42 \
-        --repo $REPO_URL \
-        --path . \
-        --dest-server https://kubernetes.default.svc \
-        --dest-namespace dev \
-        --sync-policy automated
-
+    log_success "Application created and synced"
     argocd app sync will42
 
     log_success "ArgoCD installation and application setup complete"
@@ -272,15 +291,15 @@ display_access_info() {
     local gitlab_password
     gitlab_password=$(kubectl get secret gitlab-gitlab-initial-root-password -n gitlab -o jsonpath='{.data.password}' | base64 --decode)
     
-    echo -e "${GREEN}${CHECKMARK}${NC} ${WHITE}ArgoCD is available at:${NC} ${CYAN}http://argocd.awesome.local${NC}"
+    echo -e "${GREEN}${CHECKMARK}${NC} ${WHITE}ArgoCD is available at:${NC} ${CYAN}http://${ARGO_HOST}${NC}"
     echo -e "   ${CYAN}Username:${NC} ${WHITE}admin${NC}"
     echo -e "   ${CYAN}Password:${NC} ${WHITE}$argocd_password${NC}"
     echo ""
-    echo -e "${GREEN}${CHECKMARK}${NC} ${WHITE}GitLab is available at:${NC} ${CYAN}http://gitlab.concombre.toboggan${DOMAIN_NAME}${NC}"
+    echo -e "${GREEN}${CHECKMARK}${NC} ${WHITE}GitLab is available at:${NC} ${CYAN}http://${GITLAB_HOST}${NC}"
     echo -e "   ${CYAN}Username:${NC} ${WHITE}root${NC}"
     echo -e "   ${CYAN}Password:${NC} ${WHITE}$gitlab_password${NC}"
     echo ""
-    echo -e "${GREEN}${CHECKMARK}${NC} ${WHITE}Application is available at:${NC} ${CYAN}http://playround.local${NC}"
+    echo -e "${GREEN}${CHECKMARK}${NC} ${WHITE}Application is available at:${NC} ${CYAN}http://${APP_HOST}${NC}"
     echo ""
     echo -e "${PURPLE}═══════════════════════════════════════════════════════════${NC}"
 }

@@ -66,7 +66,7 @@ main() {
     # Step 1: Create k3d cluster
     print_step "1" "Creating k3d cluster with 2 agents"
     log_info "Creating cluster 'argocluster'..."
-    k3d cluster create argocluster --config conf/k3d.yaml
+    k3d cluster create argocluster --config confs/k3d.yaml
     log_success "Cluster created successfully"
     
     # Step 2: Setup ArgoCD namespace
@@ -84,7 +84,7 @@ main() {
 
     # Step 4: reapply the fucking insecure server configuration
     print_step "4" "Applying confing & ingress"
-    kubectl apply -n argocd -f conf/configmap.yaml
+    kubectl apply -n argocd -f confs/configmap.yaml
    
     
     print_step "5" "Restarting deployment"
@@ -106,7 +106,7 @@ main() {
     log_info "Retrieving admin password..."
     PASSWORD=$(kubectl get secret argocd-initial-admin-secret -n argocd -o jsonpath="{.data.password}" | base64 -d)
 
-    kubectl apply -n argocd -f conf/ingress.yaml
+    kubectl apply -n argocd -f confs/ingress.yaml
 
 
     log_info "Logging into ArgoCD..."

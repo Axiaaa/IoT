@@ -23,3 +23,6 @@ app2 :
 
 app3 : 
 	curl -H "Host:app3.com" 192.168.56.110
+
+default : 
+	curl 192.168.56.110
